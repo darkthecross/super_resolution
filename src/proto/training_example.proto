@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package super_resolution;
+
+message TrainingExample {
+  // 5 frames, 854x480.
+  repeated bytes frames = 1;
+  // Single high res frame at the last frame of the sequence, 2562*1440
+  bytes high_res_frame = 2;
+}
+
+message TrainingExamples {
+  repeated TrainingExample examples = 1;
+}
