@@ -42,8 +42,18 @@ Yes, single frame super resolution.
 
 [!img](edsr.png)
 
-This gets us a MSE of 7.71 and MAE of 1.48. My theory is that, we could achieve better error using multi frame as inputs.
+This gets us a MSE of 7.71 and MAE of 1.48. 
+
+Purely eye-balling, the neural network performs much better than nearest pixel interpolation, a little bit better than cubic interpolation:
+
+[!img](imgs/eval_1.png)
+
+[!img](imgs/eval_2.png)
+
+My theory is that, we could achieve better error using multi frame as inputs.
 
 ### Multi frame
 
 [!img](edsr_multi.png)
+
+Turned out that we only got to a MSD of 12.05 and MAE of 1.91, worse than single frame. Fine.

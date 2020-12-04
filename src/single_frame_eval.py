@@ -13,9 +13,10 @@ import cv2
 
 DIV2K_RGB_MEAN = np.array([0.5, 0.5, 0.5]) * 255
 
+
 class SingleFrameGenerator(object):
     def __init__(self):
-        file_names = glob.glob("../data/16069825*.binarypb")
+        file_names = glob.glob("../data/*.binarypb")
         self.x_raw_bytes = []
         self.y_raw_bytes = []
         for fn in file_names:
@@ -48,9 +49,6 @@ class SingleFrameGenerator(object):
 
 
 if __name__ == "__main__":
-    # Disable GPU.
-    # os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-
     ds_imgs = tf.data.Dataset.from_generator(SingleFrameGenerator, output_types=(
         tf.float32, tf.float32), output_shapes=((480, 854, 3), (1440, 2562, 3)))
     print(ds_imgs)
@@ -58,16 +56,19 @@ if __name__ == "__main__":
     model = tf.keras.models.load_model('models/single_frame_model')
     model.summary()
 
-    for x_eval, y_eval in ds_imgs.take(100):
-        print(x_eval.shape)
-        print(y_eval.shape)
-        cv2.imshow("x_eval", x_eval.numpy().astype(np.uint8))
+    eval_dir = "../eval/single/"
+    i = 0
+    for x_eval, _ in ds_imgs.take(10):
+        x_eval_resized = cv2.resize(x_eval.numpy().astype(
+            np.uint8), None, None, 3, 3, cv2.INTER_AREA)
+        cv2.imshow("HR", x_eval_resized)
         cv2.waitKey()
-        cv2.imshow("HR", y_eval.numpy().astype(np.uint8))
-        cv2.waitKey()
+        cv2.imwrite(eval_dir + str(i)+"_resized.png", x_eval_resized)
         x_eval = np.expand_dims(x_eval, axis=0)
-        print(x_eval.shape)
         y_pred = model.predict(x_eval)
         y_pred = np.clip(y_pred, 0, 255)
-        cv2.imshow("HR", y_pred[0, :, :, :].astype(np.uint8))
+        y_pred_im = y_pred[0, :, :, :].astype(np.uint8)
+        cv2.imshow("HR", y_pred_im)
         cv2.waitKey()
+        cv2.imwrite(eval_dir + str(i)+"_predicted.png", y_pred_im)
+        i = i+1

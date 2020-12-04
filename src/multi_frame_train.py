@@ -9,8 +9,6 @@ import os
 import random
 import training_example_pb2
 
-import threading
-
 import cv2
 
 DIV2K_RGB_MEAN_3 = np.array([0.5, 0.5, 0.5]) * 255
@@ -70,18 +68,7 @@ def normalize(x):
 def denormalize(x):
     return x * 127.5 + DIV2K_RGB_MEAN_3
 
-class Decoder(threading.Thread):
-    def __init__(self, threadID, raw_x_str, x_imgs):
-        threading.Thread.__init__(self)
-        self.threadID = threadID
-        self.raw_x_str = raw_x_str
-        self.x_imgs = x_imgs
-    def run(self):
-        x_img_encoded = np.frombuffer(self.raw_x_str, dtype=np.uint8)
-        self.x_imgs = cv2.imdecode(
-            x_img_encoded, cv2.IMREAD_COLOR).astype(np.float32)
-
-class SingleFrameGenerator(object):
+class MultiFrameGenerator(object):
     def __init__(self):
         file_names = glob.glob("../data/*.binarypb")
         self.x_raw_bytes = []
@@ -102,35 +89,26 @@ class SingleFrameGenerator(object):
 
     # Python 3 compatibility
     def __next__(self):
-        return self.next()
-
-    def next(self):
         idx = random.randrange(len(self.x_raw_bytes))
         x_imgs = np.zeros((480, 854, 15), dtype=np.float32)
-        threads = []
         for i in range(5):
-            thrd = Decoder(i, self.x_raw_bytes[idx][i], x_imgs[:, :, 3*i:(3*i+3)])
-            thrd.start()
-            threads.append(thrd)
-        for t in threads:
-            t.join()
+            x_img_encoded = np.frombuffer(self.x_raw_bytes[idx][i], dtype=np.uint8)
+            x_img = cv2.imdecode(x_img_encoded, cv2.IMREAD_COLOR).astype(np.float32)
+            x_imgs[:, :, 3*i:(3*i+3)] = x_img
         y_img_encoded = np.frombuffer(self.y_raw_bytes[idx], dtype=np.uint8)
         y_img = cv2.imdecode(
             y_img_encoded, cv2.IMREAD_COLOR).astype(np.float32)
         return x_imgs, y_img
 
 if __name__ == "__main__":
-    # Disable GPU.
-    # os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-
-    ds_imgs = tf.data.Dataset.from_generator(SingleFrameGenerator, output_types=(
+    ds_imgs = tf.data.Dataset.from_generator(MultiFrameGenerator, output_types=(
         tf.float32, tf.float32), output_shapes=((480, 854, 15), (1440, 2562, 3)))
     print(ds_imgs)
     ds_imgs_batch = ds_imgs.batch(6)
 
     model = edsr(3)
     model.summary()
-    keras.utils.plot_model(model, "edsr_multi.png", show_shapes=True)
+    # keras.utils.plot_model(model, "edsr_multi.png", show_shapes=True)
 
     checkpoint_path = "checkpoints/cp-{epoch:04d}.ckpt"
     checkpoint_dir = os.path.dirname(checkpoint_path)
@@ -147,7 +125,7 @@ if __name__ == "__main__":
         optimizer=keras.optimizers.Adam(),
         metrics=keras.metrics.MeanAbsoluteError())
 
-    history = model.fit(ds_imgs_batch, epochs=10,
+    history = model.fit(ds_imgs_batch, epochs=3,
                         steps_per_epoch=1000, callbacks=[cp_callback])
 
     model.save("models/multi_frame_model")

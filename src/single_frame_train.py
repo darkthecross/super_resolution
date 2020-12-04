@@ -90,9 +90,6 @@ class SingleFrameGenerator(object):
 
     # Python 3 compatibility
     def __next__(self):
-        return self.next()
-
-    def next(self):
         idx = random.randrange(len(self.x_raw_bytes))
         x_img_encoded = np.frombuffer(self.x_raw_bytes[idx], dtype=np.uint8)
         y_img_encoded = np.frombuffer(self.y_raw_bytes[idx], dtype=np.uint8)
@@ -104,9 +101,6 @@ class SingleFrameGenerator(object):
 
 
 if __name__ == "__main__":
-    # Disable GPU.
-    # os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-
     ds_imgs = tf.data.Dataset.from_generator(SingleFrameGenerator, output_types=(
         tf.float32, tf.float32), output_shapes=((480, 854, 3), (1440, 2562, 3)))
     print(ds_imgs)
@@ -114,7 +108,7 @@ if __name__ == "__main__":
 
     model = edsr(3)
     model.summary()
-    keras.utils.plot_model(model, "edsr.png", show_shapes=True)
+    # keras.utils.plot_model(model, "edsr.png", show_shapes=True)
 
     checkpoint_path = "checkpoints/cp-{epoch:04d}.ckpt"
     checkpoint_dir = os.path.dirname(checkpoint_path)
